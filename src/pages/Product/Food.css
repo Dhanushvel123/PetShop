@@ -1,0 +1,36 @@
+.food-card {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+  }
+  
+  .food-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .food-img {
+    height: 160px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  .food-details {
+    padding: 10px;
+    text-align: center;
+  }
+  
+  .icon-group {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  /* Add shadow on hover */
+.card:hover {
+  transform: scale(1.02);
+  transition: 0.3s ease-in-out;
+}
