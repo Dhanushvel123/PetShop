@@ -3,7 +3,6 @@ import {
   Container,
   Table,
   Button,
-  Spinner,
   Alert,
   Row,
   Col,
@@ -40,11 +39,16 @@ function Admin() {
   const [users, setUsers] = useState([]);
   const [petFoods, setPetFoods] = useState([]);
   const [accessories, setAccessories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem("isAdminAuthenticated") === "true"
+  );
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const fetchData = async () => {
       try {
         const [ordersRes, usersRes, petFoodsRes, accessoriesRes] =
@@ -61,12 +65,38 @@ function Admin() {
       } catch (err) {
         console.error(err);
         setError("Failed to load admin dashboard data.");
-      } finally {
-        setLoading(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [isAuthenticated]);
+
+  const handleLogin = () => {
+    const { username, password } = loginForm;
+    if (!username || !password) {
+      setError("Both fields are required.");
+      return;
+    }
+
+    // NOTE: In real apps, fetch the user securely from backend
+    API.get("/user/admin")
+      .then((res) => {
+        const user = res.data.find((u) => u.username === username && u.isAdmin);
+        if (!user) {
+          setError("Invalid admin username.");
+        } else if (password !== "admin123") {
+          setError("Invalid admin password.");
+        } else {
+          localStorage.setItem("isAdminAuthenticated", "true");
+          setIsAuthenticated(true);
+          setError("");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Login failed.");
+      });
+  };
 
   const updateOrderStatus = async (orderId, status) => {
     try {
@@ -86,7 +116,7 @@ function Admin() {
     try {
       const endpoint = type === "petfood" ? `/petfoods/${id}` : `/accessories/${id}`;
       await API.put(endpoint, { stock });
-      // Update local state to reflect stock changes immediately
+
       if (type === "petfood") {
         setPetFoods((prev) =>
           prev.map((item) => (item._id === id ? { ...item, stock } : item))
@@ -98,6 +128,7 @@ function Admin() {
           )
         );
       }
+
       setSuccessMsg("Stock updated successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
@@ -143,29 +174,15 @@ function Admin() {
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: "top",
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-      },
+      legend: { position: "top" },
+      tooltip: { mode: "index", intersect: false },
     },
-    interaction: {
-      mode: "nearest",
-      axis: "x",
-      intersect: false,
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
+    interaction: { mode: "nearest", axis: "x", intersect: false },
+    scales: { y: { beginAtZero: true } },
   };
 
   const renderUsers = () => (
     <>
-     
       <h4>👥 Users List</h4>
       <Table striped bordered hover responsive>
         <thead>
@@ -385,7 +402,6 @@ function Admin() {
       case "accessories":
         return renderAccessories();
       default:
-        // Dashboard view with basic stats + chart
         return (
           <>
             <h4>📊 Dashboard</h4>
@@ -423,12 +439,44 @@ function Admin() {
     }
   };
 
-  if (loading)
+  if (!isAuthenticated) {
     return (
-      <Container className="mt-5 text-center">
-        <Spinner animation="border" />
+      <Container className="mt-5">
+        {error && <Alert variant="danger">{error}</Alert>}
+        <h3>🔐 Admin Login</h3>
+        <Form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin();
+          }}
+        >
+          <Form.Group className="mb-3">
+            <Form.Label>Admin Username</Form.Label>
+            <Form.Control
+              type="text"
+              value={loginForm.username}
+              onChange={(e) =>
+                setLoginForm({ ...loginForm, username: e.target.value })
+              }
+              required
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Admin Password</Form.Label>
+            <Form.Control
+              type="password"
+              value={loginForm.password}
+              onChange={(e) =>
+                setLoginForm({ ...loginForm, password: e.target.value })
+              }
+              required
+            />
+          </Form.Group>
+          <Button type="submit">Login</Button>
+        </Form>
       </Container>
     );
+  }
 
   return (
     <Container className="mt-4">
@@ -437,51 +485,21 @@ function Admin() {
       <Row>
         <Col md={3} className="border-end">
           <Nav variant="pills" className="flex-column">
-            <Nav.Item>
-              <Nav.Link
-                eventKey="dashboard"
-                active={activeKey === "dashboard"}
-                onClick={() => setActiveKey("dashboard")}
-              >
-                📊 Dashboard
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link
-                eventKey="users"
-                active={activeKey === "users"}
-                onClick={() => setActiveKey("users")}
-              >
-                👥 Users
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link
-                eventKey="orders"
-                active={activeKey === "orders"}
-                onClick={() => setActiveKey("orders")}
-              >
-                📦 Orders
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link
-                eventKey="petfoods"
-                active={activeKey === "petfoods"}
-                onClick={() => setActiveKey("petfoods")}
-              >
-                🍖 Pet Foods
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link
-                eventKey="accessories"
-                active={activeKey === "accessories"}
-                onClick={() => setActiveKey("accessories")}
-              >
-                🧸 Accessories
-              </Nav.Link>
-            </Nav.Item>
+            {["dashboard", "users", "orders", "petfoods", "accessories"].map((key) => (
+              <Nav.Item key={key}>
+                <Nav.Link
+                  eventKey={key}
+                  active={activeKey === key}
+                  onClick={() => setActiveKey(key)}
+                >
+                  {key === "dashboard" && "📊 Dashboard"}
+                  {key === "users" && "👥 Users"}
+                  {key === "orders" && "📦 Orders"}
+                  {key === "petfoods" && "🍖 Pet Foods"}
+                  {key === "accessories" && "🧸 Accessories"}
+                </Nav.Link>
+              </Nav.Item>
+            ))}
           </Nav>
         </Col>
         <Col md={9}>{renderContent()}</Col>
