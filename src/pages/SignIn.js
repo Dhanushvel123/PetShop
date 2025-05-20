@@ -15,7 +15,7 @@ function SignIn({ setToken }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const url = isLogin ? 'http://localhost:3002/login' : 'http://localhost:3002/register';
+    const url = isLogin ? 'https://petshop-server-ht6q.onrender.com/login' : 'https://petshop-server-ht6q.onrender.com/register';
 
     try {
       const res = await axios.post(url, {
