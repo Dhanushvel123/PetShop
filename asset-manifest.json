@@ -1,0 +1,27 @@
+{
+  "files": {
+    "main.css": "/PetShop/static/css/main.94f89e0a.css",
+    "main.js": "/PetShop/static/js/main.a3941abb.js",
+    "static/media/hero.jpg": "/PetShop/static/media/hero.fc03bca76a7fd958ad98.jpg",
+    "static/media/offer.jpg": "/PetShop/static/media/offer.3eb084514d816a00c61d.jpg",
+    "static/media/testimonial.jpg": "/PetShop/static/media/testimonial.4fb3097ed16e03a795ec.jpg",
+    "static/media/about.jpg": "/PetShop/static/media/about.8733f1fc4cf2d7f84ddf.jpg",
+    "static/media/dogbed.jpg": "/PetShop/static/media/dogbed.e3495ebe64f15455d722.jpg",
+    "static/media/team-2.jpg": "/PetShop/static/media/team-2.90c451e0754e9e3ed05a.jpg",
+    "static/media/team-1.jpg": "/PetShop/static/media/team-1.45c9def19951db073096.jpg",
+    "static/media/team-4.jpg": "/PetShop/static/media/team-4.5bf7c4f24ff89c162a2e.jpg",
+    "static/media/team-3.jpg": "/PetShop/static/media/team-3.13d008a441240b9023d5.jpg",
+    "static/media/blog-1.jpg": "/PetShop/static/media/blog-1.b7ced92df9bf193f8f6a.jpg",
+    "static/media/team-5.jpg": "/PetShop/static/media/team-5.d31298cdc0cb72e3e6ae.jpg",
+    "static/media/2dogsplay.jpg": "/PetShop/static/media/2dogsplay.dda338a5a9a623f52d4e.jpg",
+    "static/media/kittens.jpg": "/PetShop/static/media/kittens.6de566d8102b2330a23e.jpg",
+    "static/media/blog-2.jpg": "/PetShop/static/media/blog-2.5258f20ecfc2aa12f885.jpg",
+    "index.html": "/PetShop/index.html",
+    "main.94f89e0a.css.map": "/PetShop/static/css/main.94f89e0a.css.map",
+    "main.a3941abb.js.map": "/PetShop/static/js/main.a3941abb.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.94f89e0a.css",
+    "static/js/main.a3941abb.js"
+  ]
+}
