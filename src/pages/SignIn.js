@@ -15,27 +15,33 @@ function SignIn({ setToken }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const url = isLogin ? 'https://petshop-server-ht6q.onrender.com/login' : 'https://petshop-server-ht6q.onrender.com/register';
+    const url = isLogin
+      ? 'https://petshop-server-ht6q.onrender.com/login'
+      : 'https://petshop-server-ht6q.onrender.com/register';
 
     try {
       const res = await axios.post(url, {
         username: formData.username,
         password: formData.password,
+      }, {
+        // 👇 CORS safe: don't send credentials (like cookies)
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       if (isLogin) {
-        // Save token on login only
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
-        navigate('/home'); // ✅ Navigate to home after login
+        navigate('/home');
       } else {
         alert("Registration successful! Please login.");
-        setIsLogin(true); // ✅ Switch to login form
-        setFormData({ username: '', password: '' }); // Reset form
+        setIsLogin(true);
+        setFormData({ username: '', password: '' });
       }
     } catch (err) {
-      console.error(err.response?.data?.message || `${isLogin ? 'Login' : 'Registration'} failed`);
-      alert(err.response?.data?.message || 'Something went wrong');
+      console.error("Error:", err?.response?.data?.message || "Request failed");
+      alert(err?.response?.data?.message || "Something went wrong");
     }
   };
 
@@ -43,7 +49,10 @@ function SignIn({ setToken }) {
     <div style={styles.container}>
       <div style={styles.toggleButtons}>
         <button
-          style={{ ...styles.toggleButton, backgroundColor: isLogin ? '#28a745' : '#ccc' }}
+          style={{
+            ...styles.toggleButton,
+            backgroundColor: isLogin ? '#28a745' : '#ccc'
+          }}
           onClick={() => setIsLogin(true)}
         >
           Login
@@ -51,7 +60,7 @@ function SignIn({ setToken }) {
         <button
           style={{
             ...styles.toggleButton,
-            backgroundColor: !isLogin ? '#28a745' : '#ccc',
+            backgroundColor: !isLogin ? '#28a745' : '#ccc'
           }}
           onClick={() => setIsLogin(false)}
         >
