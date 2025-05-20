@@ -1,131 +1,175 @@
-import React, { useState, useEffect } from "react";
-import Axios from "axios";
-import { FaHeart, FaShoppingCart, FaTrash, FaEdit, FaSave } from "react-icons/fa";
-import { ToastContainer, toast } from "react-toastify";
-import 'react-toastify/dist/ReactToastify.css';
-import "./Accessory.css"; // optional for custom styles
-import { Container, Row, Col, Card, Button, Form, Table } from "react-bootstrap";
-
-const dummyAccessories = [
-  {
-    accessoryName: "Pet Collar",
-    description: "Adjustable nylon collar",
-    price: 10,
-    stockQuantity: 20,
-    imageUrl: "https://i.ibb.co/21R2nV1M/petcollar.jpg"
-  },
-  {
-    accessoryName: "Pet Bowl",
-    description: "Stainless steel food bowl",
-    price: 8,
-    stockQuantity: 15,
-    imageUrl: "https://i.ibb.co/NdxZGN8h/petbowl.jpg"
-  },
-  {
-    accessoryName: "Pet Bed",
-    description: "Cozy foam bed for pets",
-    price: 30,
-    stockQuantity: 10,
-    imageUrl: "https://i.ibb.co/9m9TjKQb/petbed.jpg"
-  },
-  {
-    accessoryName: "Pet Toy",
-    description: "Rubber chew toy",
-    price: 6,
-    stockQuantity: 25,
-    imageUrl: "https://i.ibb.co/yF4fk1R1/pettoy.jpg"
-  }
-];
-
-const getAuthHeader = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  },
-});
+import React, { useState, useEffect, useCallback } from "react";
+import API from "../../utils/api";
+import {
+  Card, Button, Row, Col, Container,
+  Table, Form, Toast, ToastContainer, InputGroup,
+} from "react-bootstrap";
+import {
+  FaHeart, FaShoppingCart, FaTrash,
+  FaEdit, FaSave, FaPlus, FaMinus,
+} from "react-icons/fa";
+import "./Accessory.css";
 
 function Accessory() {
+  const [accessories, setAccessories] = useState([]);
   const [cart, setCart] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [editItem, setEditItem] = useState({ accessoryName: "" });
+  const [editQuantity, setEditQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
 
-  const filteredAccessories = dummyAccessories.filter((item) =>
-    item.accessoryName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const fetchCart = () => {
-    Axios.get("http://localhost:3002/accessories/get", getAuthHeader())
-      .then((res) => setCart(res.data))
-      .catch((err) => toast.error("❌ Failed to fetch cart"));
+  const showToast = (message, variant = "success") => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => setToast({ show: false, message: "", variant: "success" }), 3000);
   };
 
-  useEffect(() => {
-    fetchCart();
+  const fetchCart = useCallback(() => {
+    API.get("/accessories/cart")
+      .then((res) => setCart(res.data))
+      .catch(() => showToast("Failed to fetch accessory cart", "danger"));
   }, []);
 
+  const fetchAccessories = useCallback(() => {
+    API.get("/accessories")
+      .then((res) => setAccessories(res.data))
+      .catch(() => showToast("Failed to fetch accessories", "danger"));
+  }, []);
+
+  useEffect(() => {
+    fetchAccessories();
+    fetchCart();
+  }, [fetchAccessories, fetchCart]);
+
   const addToCart = (item) => {
-    Axios.post("http://localhost:3002/accessories/insert", item, getAuthHeader())
+    const existing = cart.find(c => c.accessory === item._id);
+    const quantity = existing ? existing.quantity + 1 : 1;
+
+    if (item.stockQuantity < quantity) {
+      return showToast("Not enough stock", "warning");
+    }
+
+    API.post("/accessories/cart", {
+      accessoryId: item._id,
+      quantity: 1,
+      price: item.price,
+      image: item.imageUrl
+    })
       .then(() => {
         fetchCart();
-        toast.success(`✅ Added ${item.accessoryName}`);
+        fetchAccessories();
+        showToast("Accessory added to cart!");
       })
-      .catch(() => toast.error("❌ Add failed"));
+      .catch(() => showToast("Add to cart failed", "danger"));
+  };
+
+  const toggleFavorite = (id) => {
+    API.post(`/accessories/favorite/${id}`)
+      .then(() => {
+        fetchAccessories();
+        showToast("Favorite status toggled");
+      })
+      .catch(() => showToast("Toggle failed", "danger"));
+  };
+
+  const updateQuantity = (id, quantity) => {
+    if (quantity < 1) return showToast("Minimum quantity is 1", "warning");
+
+    API.put(`/accessories/cart/${id}`, { quantity })
+      .then(() => {
+        fetchCart();
+        fetchAccessories();
+        setEditingId(null);
+        showToast("Quantity updated");
+      })
+      .catch(() => showToast("Update failed", "danger"));
   };
 
   const deleteFromCart = (id) => {
-    Axios.delete(`http://localhost:3002/accessories/delete/${id}`, getAuthHeader())
+    API.delete(`/accessories/cart/${id}`)
       .then(() => {
         fetchCart();
-        toast.info("🗑️ Removed item");
+        fetchAccessories();
+        showToast("Accessory removed from cart and stock restored");
       })
-      .catch(() => toast.error("❌ Delete failed"));
+      .catch(() => showToast("Delete failed", "danger"));
   };
 
-  const updateName = (id) => {
-    Axios.put("http://localhost:3002/accessories/update", { id, newName: editItem.accessoryName }, getAuthHeader())
+  const placeOrder = () => {
+    if (cart.length === 0) return showToast("Cart is empty", "warning");
+
+    const items = cart.map(item => ({
+      productType: "accessory",
+      productId: item.accessory,
+      name: item.accessoryName,
+      quantity: item.quantity,
+      price: item.price,
+      image: item.image
+    }));
+
+    const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    API.post("/orders/checkout", {
+      items,
+      totalPrice
+    })
       .then(() => {
         fetchCart();
-        setEditingId(null);
-        setEditItem({ accessoryName: "" });
-        toast.success("✏️ Name updated");
+        fetchAccessories();
+        showToast("Order placed!");
       })
-      .catch(() => toast.error("❌ Update failed"));
+      .catch(() => showToast("Order failed", "danger"));
   };
+
+  const filteredAccessories = accessories.filter((a) =>
+    a.accessoryName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getCartTotal = () =>
+    cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);
 
   return (
-    <Container className="mt-4">
-      <ToastContainer />
+    <Container className="mt-5">
+      <ToastContainer position="bottom-end" className="p-3">
+        <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>
+          <Toast.Body className="text-white">{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
+
       <h2 className="text-center mb-4">🎁 Pet Accessories</h2>
 
-      {/* Search Bar */}
-      <Form.Control
-        type="text"
-        placeholder="Search accessories..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 shadow-sm"
-      />
+      <InputGroup className="mb-4">
+        <Form.Control
+          type="text"
+          placeholder="Search accessories..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </InputGroup>
 
-      {/* Cards */}
-      <Row xs={1} sm={2} md={3} lg={4} className="g-4">
+      <Row className="g-4">
         {filteredAccessories.map((item, idx) => (
-          <Col key={idx}>
-            <Card className="shadow-sm h-100 rounded">
-              <Card.Img
-                variant="top"
-                src={item.imageUrl}
-                style={{ height: "180px", objectFit: "cover" }}
-              />
-              <Card.Body>
+          <Col key={idx} xs={12} sm={6} md={4} lg={3}>
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Img variant="top" src={item.imageUrl} height={180} style={{ objectFit: "cover" }} />
+              <Card.Body className="d-flex flex-column">
                 <Card.Title>{item.accessoryName}</Card.Title>
-                <Card.Text className="text-muted small">{item.description}</Card.Text>
-                <p><strong>Price:</strong> ${item.price}</p>
+                <Card.Text className="text-muted">{item.description}</Card.Text>
+                <p><strong>${item.price}</strong></p>
                 <p><strong>Stock:</strong> {item.stockQuantity}</p>
-                <div className="d-flex gap-2">
-                  <Button size="sm" variant="success" onClick={() => addToCart(item)}>
+                <div className="mt-auto d-flex justify-content-between">
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => addToCart(item)}
+                    disabled={item.stockQuantity <= 0}
+                  >
                     <FaShoppingCart />
                   </Button>
-                  <Button size="sm" variant="outline-danger">
+                  <Button
+                    variant={item.favorite ? "danger" : "outline-danger"}
+                    size="sm"
+                    onClick={() => toggleFavorite(item._id)}
+                  >
                     <FaHeart />
                   </Button>
                 </div>
@@ -135,69 +179,87 @@ function Accessory() {
         ))}
       </Row>
 
-      {/* Cart Table */}
       <div className="mt-5">
         <h4>🛒 Accessory Cart</h4>
         {cart.length === 0 ? (
-          <p>No accessories in cart yet.</p>
+          <p>No items in cart.</p>
         ) : (
-          <Table bordered responsive className="shadow-sm">
-            <thead className="table-light">
-              <tr>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <img src={item.imageUrl} alt={item.accessoryName} width="60" />
-                  </td>
-                  <td>
-                    {editingId === item._id ? (
-                      <Form.Control
-                        type="text"
-                        value={editItem.accessoryName}
-                        onChange={(e) => setEditItem({ accessoryName: e.target.value })}
-                      />
-                    ) : (
-                      item.accessoryName
-                    )}
-                  </td>
-                  <td>{item.description}</td>
-                  <td>${item.price}</td>
-                  <td>{item.stockQuantity}</td>
-                  <td>
-                    {editingId === item._id ? (
-                      <Button size="sm" variant="primary" onClick={() => updateName(item._id)} className="me-2">
-                        <FaSave />
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="warning"
-                        onClick={() => {
-                          setEditingId(item._id);
-                          setEditItem({ accessoryName: item.accessoryName });
-                        }}
-                        className="me-2"
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    <Button size="sm" variant="danger" onClick={() => deleteFromCart(item._id)}>
-                      <FaTrash />
-                    </Button>
-                  </td>
+          <>
+            <Table responsive striped bordered hover>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Total</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={item._id}>
+                    <td><img src={item.image} alt={item.accessoryName} width={60} /></td>
+                    <td>{item.accessoryName}</td>
+                    <td>${item.price}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <Button size="sm" variant="outline-secondary" onClick={() => updateQuantity(item._id, item.quantity - 1)}>
+                          <FaMinus />
+                        </Button>
+                        {editingId === item._id ? (
+                          <Form.Control
+                            type="number"
+                            min="1"
+                            value={editQuantity}
+                            onChange={(e) => setEditQuantity(e.target.value)}
+                            style={{ maxWidth: "70px" }}
+                          />
+                        ) : (
+                          <span>{item.quantity}</span>
+                        )}
+                        <Button size="sm" variant="outline-secondary" onClick={() => updateQuantity(item._id, item.quantity + 1)}>
+                          <FaPlus />
+                        </Button>
+                      </div>
+                    </td>
+                    <td>${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>
+                      {editingId === item._id ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => updateQuantity(item._id, Number(editQuantity))}
+                        >
+                          <FaSave />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => {
+                            setEditingId(item._id);
+                            setEditQuantity(item.quantity);
+                          }}
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
+                      <Button variant="danger" size="sm" onClick={() => deleteFromCart(item._id)}>
+                        <FaTrash />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <h5 className="text-end">💵 Total: <strong>${getCartTotal()}</strong></h5>
+            <div className="text-end">
+              <Button variant="success" onClick={placeOrder}>Place Order</Button>
+            </div>
+          </>
         )}
       </div>
     </Container>

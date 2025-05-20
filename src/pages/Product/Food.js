@@ -1,224 +1,254 @@
-import React, { useState, useEffect } from "react";
-import Axios from "axios";
+// ✅ Updated Food.js with unified Place Order
+import React, { useState, useEffect, useCallback } from "react";
+import API from "../../utils/api";
 import {
-  Card,
-  Button,
-  Row,
-  Col,
-  Container,
-  Table,
-  Form,
-  Toast,
-  ToastContainer,
-  InputGroup,
+  Card, Button, Row, Col, Container,
+  Table, Form, Toast, ToastContainer, InputGroup
 } from "react-bootstrap";
-import { FaHeart, FaShoppingCart, FaTrash, FaEdit, FaSave } from "react-icons/fa";
+import {
+  FaHeart, FaShoppingCart, FaTrash,
+  FaEdit, FaSave, FaPlus, FaMinus
+} from "react-icons/fa";
 import "./Food.css";
 
-const dummyFoods = [
-  {
-    image: "https://i.ibb.co/n84bT5rg/product-1.png",
-    foodName: "Premium Kibble",
-    description: "Tasty dry food",
-    price: 12,
-  },
-  {
-    image: "https://i.ibb.co/wh6rqMNJ/product-2.png",
-    foodName: "Organic Cat Mix",
-    description: "Healthy cat blend",
-    price: 15,
-  },
-  {
-    image: "https://i.ibb.co/WW9vKvkN/product-3.png",
-    foodName: "Salmon Bites",
-    description: "Savory salmon treats",
-    price: 18,
-  },
-  {
-    image: "https://i.ibb.co/pVFv4R3/product-4.png",
-    foodName: "Chicken Delight",
-    description: "Delicious chicken",
-    price: 14,
-  },
-];
-
-const getAuthHeader = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  },
-});
-
 function Food() {
+  const [foods, setFoods] = useState([]);
   const [cart, setCart] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [editItem, setEditItem] = useState({ foodName: "" });
+  const [editQuantity, setEditQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
-
-  useEffect(() => {
-    Axios.get("http://localhost:3002/get", getAuthHeader())
-      .then((res) => setCart(res.data))
-      .catch((err) => console.error("Fetch cart error:", err.response?.data || err.message));
-  }, []);
 
   const showToast = (message, variant = "success") => {
     setToast({ show: true, message, variant });
     setTimeout(() => setToast({ show: false, message: "", variant: "success" }), 3000);
   };
 
-  const fetchCart = () => {
-    Axios.get("http://localhost:3002/get", getAuthHeader())
+  const fetchCart = useCallback(() => {
+    API.get("/petfoods/cart")
       .then((res) => setCart(res.data))
-      .catch((err) => showToast("Failed to fetch cart", "danger"));
-  };
+      .catch(() => showToast("Failed to fetch food cart", "danger"));
+  }, []);
 
-  const addFoodToCart = (food) => {
-    const payload = { ...food };
-    Axios.post("http://localhost:3002/insert", payload, getAuthHeader())
+  const fetchFoods = useCallback(() => {
+    API.get("/petfoods")
+      .then((res) => setFoods(res.data))
+      .catch(() => showToast("Failed to fetch foods", "danger"));
+  }, []);
+
+  useEffect(() => {
+    fetchFoods();
+    fetchCart();
+  }, [fetchFoods, fetchCart]);
+
+  const addToCart = (item) => {
+    const existing = cart.find(c => c.food === item._id);
+    const quantity = existing ? existing.quantity + 1 : 1;
+
+    if (item.stock < quantity) {
+      return showToast("Not enough stock", "warning");
+    }
+
+    API.post("/petfoods/cart", {
+      foodId: item._id,
+      quantity: 1,
+      price: item.price,
+      image: item.image
+    })
       .then(() => {
         fetchCart();
+        fetchFoods();
         showToast("Food added to cart!");
       })
-      .catch(() => showToast("Add food failed", "danger"));
+      .catch(() => showToast("Add to cart failed", "danger"));
   };
 
-  const deleteFoodFromCart = (id) => {
-    Axios.delete(`http://localhost:3002/delete/${id}`, getAuthHeader())
+  const toggleFavorite = (id) => {
+    API.post(`/petfoods/favorite/${id}`)
       .then(() => {
-        fetchCart();
-        showToast("Food removed from cart");
+        fetchFoods();
+        showToast("Favorite status toggled");
       })
-      .catch(() => showToast("Delete failed", "danger"));
+      .catch(() => showToast("Toggle failed", "danger"));
   };
 
-  const updateFoodName = (id) => {
-    Axios.put("http://localhost:3002/update", { id, newFood: editItem.foodName }, getAuthHeader())
+  const updateQuantity = (id, quantity) => {
+    if (quantity < 1) return showToast("Minimum quantity is 1", "warning");
+
+    API.put(`/petfoods/cart/${id}`, { quantity })
       .then(() => {
         fetchCart();
+        fetchFoods();
         setEditingId(null);
-        setEditItem({ foodName: "" });
-        showToast("Food name updated");
+        showToast("Quantity updated");
       })
       .catch(() => showToast("Update failed", "danger"));
   };
 
-  const handleChange = (e) => {
-    setEditItem({ foodName: e.target.value });
+  const deleteFromCart = (id) => {
+    API.delete(`/petfoods/cart/${id}`)
+      .then(() => {
+        fetchCart();
+        fetchFoods();
+        showToast("Item removed from cart and stock restored");
+      })
+      .catch(() => showToast("Delete failed", "danger"));
   };
 
-  const filteredFoods = dummyFoods.filter((f) =>
-    f.foodName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ✅ UNIFIED Place Order Logic (Food + Accessory carts)
+  const placeOrder = () => {
+    if (cart.length === 0) return showToast("Cart is empty", "warning");
+
+    API.post("/orders/checkout")
+      .then((res) => {
+        showToast("Order placed successfully");
+        fetchCart();
+        fetchFoods();
+      })
+      .catch((err) => {
+        console.error(err);
+        showToast("Order failed", "danger");
+      });
+  };
+
+  const filteredFoods = foods.filter(f => f.foodName.toLowerCase().includes(searchTerm.toLowerCase()));
+  const getCartTotal = () => cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);
 
   return (
     <Container className="mt-5">
-      <h2 className="text-center mb-4">🍖 Pet Food Store</h2>
+      <ToastContainer position="bottom-end" className="p-3">
+        <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>
+          <Toast.Body className="text-white">{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
+
+      <h2 className="text-center mb-4">🥫 Pet Food</h2>
 
       <InputGroup className="mb-4">
         <Form.Control
           type="text"
-          placeholder="Search food by name..."
+          placeholder="Search food..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </InputGroup>
 
       <Row className="g-4">
-        {filteredFoods.length === 0 ? (
-          <p>No foods found.</p>
-        ) : (
-          filteredFoods.map((food, idx) => (
-            <Col key={idx} xs={12} sm={6} md={4} lg={3}>
-              <Card className="h-100 shadow-lg border-0">
-                <Card.Img variant="top" src={food.image} height={180} style={{ objectFit: "contain" }} />
-                <Card.Body className="d-flex flex-column">
-                  <Card.Title>{food.foodName}</Card.Title>
-                  <Card.Text>{food.description}</Card.Text>
-                  <Card.Text><strong>${food.price}</strong></Card.Text>
-                  <div className="mt-auto d-flex justify-content-between">
-                    <Button variant="success" size="sm" onClick={() => addFoodToCart(food)}>
-                      <FaShoppingCart />
-                    </Button>
-                    <Button variant="outline-danger" size="sm">
-                      <FaHeart />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))
-        )}
+        {filteredFoods.map((item, idx) => (
+          <Col key={idx} xs={12} sm={6} md={4} lg={3}>
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Img variant="top" src={item.image} height={180} style={{ objectFit: "cover" }} />
+              <Card.Body className="d-flex flex-column">
+                <Card.Title>{item.foodName}</Card.Title>
+                <Card.Text className="text-muted">{item.description}</Card.Text>
+                <p><strong>${item.price}</strong></p>
+                <p><strong>Stock:</strong> {item.stock}</p>
+                <div className="mt-auto d-flex justify-content-between">
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => addToCart(item)}
+                    disabled={item.stock <= 0}
+                  >
+                    <FaShoppingCart />
+                  </Button>
+                  <Button
+                    variant={item.favorite ? "danger" : "outline-danger"}
+                    size="sm"
+                    onClick={() => toggleFavorite(item._id)}
+                  >
+                    <FaHeart />
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
       </Row>
 
       <div className="mt-5">
-        <h4>🛒 Cart</h4>
+        <h4>🛒 Food Cart</h4>
         {cart.length === 0 ? (
-          <p>No items in cart yet.</p>
+          <p>No items in cart.</p>
         ) : (
-          <Table responsive striped bordered hover>
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Price</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((item) => (
-                <tr key={item._id}>
-                  <td><img src={item.image} alt={item.foodName} width={60} /></td>
-                  <td>
-                    {editingId === item._id ? (
-                      <Form.Control
-                        type="text"
-                        value={editItem.foodName}
-                        onChange={handleChange}
-                      />
-                    ) : (
-                      item.foodName
-                    )}
-                  </td>
-                  <td>${item.price}</td>
-                  <td>
-                    {editingId === item._id ? (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => updateFoodName(item._id)}
-                      >
-                        <FaSave />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="warning"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => {
-                          setEditingId(item._id);
-                          setEditItem({ foodName: item.foodName });
-                        }}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    <Button variant="danger" size="sm" onClick={() => deleteFoodFromCart(item._id)}>
-                      <FaTrash />
-                    </Button>
-                  </td>
+          <>
+            <Table responsive striped bordered hover>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Total</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={item._id}>
+                    <td><img src={item.image} alt={item.foodName} width={60} /></td>
+                    <td>{item.foodName}</td>
+                    <td>${item.price}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <Button size="sm" variant="outline-secondary" onClick={() => updateQuantity(item._id, item.quantity - 1)}>
+                          <FaMinus />
+                        </Button>
+                        {editingId === item._id ? (
+                          <Form.Control
+                            type="number"
+                            min="1"
+                            value={editQuantity}
+                            onChange={(e) => setEditQuantity(e.target.value)}
+                            style={{ maxWidth: "70px" }}
+                          />
+                        ) : (
+                          <span>{item.quantity}</span>
+                        )}
+                        <Button size="sm" variant="outline-secondary" onClick={() => updateQuantity(item._id, item.quantity + 1)}>
+                          <FaPlus />
+                        </Button>
+                      </div>
+                    </td>
+                    <td>${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>
+                      {editingId === item._id ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => updateQuantity(item._id, Number(editQuantity))}
+                        >
+                          <FaSave />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => {
+                            setEditingId(item._id);
+                            setEditQuantity(item.quantity);
+                          }}
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
+                      <Button variant="danger" size="sm" onClick={() => deleteFromCart(item._id)}>
+                        <FaTrash />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <h5 className="text-end">💵 Total: <strong>${getCartTotal()}</strong></h5>
+            <div className="text-end">
+              <Button variant="success" onClick={placeOrder}>Place Order</Button>
+            </div>
+          </>
         )}
       </div>
-
-      <ToastContainer position="bottom-end" className="p-3">
-        <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>
-          <Toast.Body className="text-white">{toast.message}</Toast.Body>
-        </Toast>
-      </ToastContainer>
     </Container>
   );
 }

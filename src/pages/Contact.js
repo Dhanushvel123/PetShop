@@ -24,10 +24,55 @@ function Contact() {
     message: "",
   });
 
+  const [touched, setTouched] = useState({});
   const [darkMode, setDarkMode] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+
+    // Re-validate on change
+    validateField(name, value);
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched({ ...touched, [name]: true });
+    validateField(name, form[name]);
+  };
+
+  const validateField = (name, value) => {
+    let error = "";
+
+    if (name === "name") {
+      if (!value.trim()) error = "Name is required.";
+      else if (!/^[A-Za-z\s]+$/.test(value)) error = "Only letters allowed.";
+      else if (value.trim().length < 3) error = "Name must be at least 3 characters.";
+    }
+
+    if (name === "email") {
+      if (!value.trim()) error = "Email is required.";
+      else if (!/^[a-z0-9._%+-]+@gmail\.com$/.test(value))
+        error = "Only Gmail addresses allowed.";
+    }
+
+    if (name === "subject" && !value.trim()) {
+      error = "Subject is required.";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    Object.keys(form).forEach((key) => {
+      validateField(key, form[key]);
+      newErrors[key] = errors[key]; // Collect errors
+    });
+
+    setErrors(newErrors); // Use newErrors to update the state
+    return Object.values(newErrors).every((e) => e === "");
   };
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
@@ -35,29 +80,51 @@ function Contact() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // EmailJS config
+    const isFormValid = validateForm();
+    if (!isFormValid) {
+      toast.error("Please fix the form errors.");
+      return;
+    }
+
     emailjs
-      .send(
-        "service_rhr4lpd",
-        "template_rj7joqu",
-        form,
-        "JPpf_8ApyZCOK8Afn"
-      )
+      .send("service_rhr4lpd", "template_18lijgl", form, "JPpf_8ApyZCOK8Afn")
       .then(
-        (result) => {
+        () => {
           toast.success("Message sent successfully!");
           setForm({ name: "", email: "", subject: "", message: "" });
+          setErrors({});
+          setTouched({});
         },
-        (error) => {
+        () => {
           toast.error("Failed to send message. Please try again.");
         }
       );
   };
 
+  const fields = [
+    {
+      icon: <FaUser />,
+      name: "name",
+      type: "text",
+      label: "Your Name",
+    },
+    {
+      icon: <FaEnvelope />,
+      name: "email",
+      type: "email",
+      label: "Your Email",
+    },
+    {
+      icon: <FaTag />,
+      name: "subject",
+      type: "text",
+      label: "Subject",
+    },
+  ];
+
   return (
     <div className={`container py-5 ${darkMode ? "dark-mode" : ""}`}>
       <ToastContainer position="top-right" autoClose={3000} />
-
       <div className="text-end mb-3">
         <button
           className="btn btn-sm btn-outline-secondary"
@@ -74,15 +141,11 @@ function Contact() {
         transition={{ duration: 0.6 }}
       >
         {/* Left: Form */}
-        <div className="col-md-6 mb-4 mb-md-0">
+        <div className="contact col-md-6 mb-4 mb-md-0">
           <h6 className="text-success fw-bold">CONTACT US</h6>
           <h2 className="fw-bold mb-4">PLEASE FEEL FREE TO CONTACT US</h2>
-          <form onSubmit={handleSubmit}>
-            {[
-              { icon: <FaUser />, name: "name", type: "text", label: "Your Name" },
-              { icon: <FaEnvelope />, name: "email", type: "email", label: "Your Email" },
-              { icon: <FaTag />, name: "subject", type: "text", label: "Subject" },
-            ].map(({ icon, name, type, label }) => (
+          <form onSubmit={handleSubmit} noValidate>
+            {fields.map(({ icon, name, type, label }) => (
               <div key={name} className="form-group mb-3">
                 <label className="form-label d-flex align-items-center">
                   <span className="me-2 text-success">{icon}</span> {label}
@@ -90,11 +153,21 @@ function Contact() {
                 <input
                   type={type}
                   name={name}
-                  className="form-control"
+                  className={`form-control ${
+                    touched[name]
+                      ? errors[name]
+                        ? "is-invalid"
+                        : "is-valid"
+                      : ""
+                  }`}
                   value={form[name]}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                 />
+                {touched[name] && errors[name] && (
+                  <div className="invalid-feedback">{errors[name]}</div>
+                )}
               </div>
             ))}
 
@@ -105,11 +178,21 @@ function Contact() {
               <textarea
                 name="message"
                 rows="5"
-                className="form-control"
+                className={`form-control ${
+                  touched.message
+                    ? errors.message
+                      ? "is-invalid"
+                      : "is-valid"
+                    : ""
+                }`}
                 value={form.message}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
               />
+              {touched.message && !form.message.trim() && (
+                <div className="invalid-feedback">Message is required.</div>
+              )}
             </div>
 
             <motion.button
@@ -172,6 +255,7 @@ function Contact() {
         </motion.div>
       </motion.div>
     </div>
+    
   );
 }
 
