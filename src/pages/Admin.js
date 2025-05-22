@@ -237,9 +237,6 @@ function Admin() {
     );
   }
   else if(!loading) {
-   
-  
-
   return (
     <Container className="mt-4">
       {error && <Alert variant="danger">{error}</Alert>}
