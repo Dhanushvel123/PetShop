@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HashRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Navbar, Nav, NavDropdown, Container, Button } from 'react-bootstrap';
 import { FaUserCircle } from 'react-icons/fa';
@@ -22,6 +23,7 @@ import './App.css';
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [username, setUsername] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const currentToken = localStorage.getItem('token');
@@ -60,7 +62,7 @@ function App() {
     localStorage.removeItem('token');
     setToken(null);
     setUsername('');
-    window.location.href = '/signin';
+     navigate('/signin');
   };
 
   return (
