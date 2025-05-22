@@ -237,10 +237,9 @@ function Admin() {
     );
   }
   else if(!loading) {
-    return (
-      <h1>Welcome</h1>
-    );
-  }
+   
+  
+
   return (
     <Container className="mt-4">
       {error && <Alert variant="danger">{error}</Alert>}
@@ -277,6 +276,7 @@ function Admin() {
       </Row>
     </Container>
   );
+  }
 
   function renderUsers() {
     return (
