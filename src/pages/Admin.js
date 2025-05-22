@@ -44,37 +44,41 @@ function Admin() {
   const [users, setUsers] = useState([]);
   const [petFoods, setPetFoods] = useState([]);
   const [accessories, setAccessories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // default: false
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const fetchData = async () => {
-      try {
-        const [ordersRes, usersRes, petFoodsRes, accessoriesRes] =
-          await Promise.all([
-            API.get("/orders/admin"),
-            API.get("/user/admin"),
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [ordersRes, usersRes, petFoodsRes, accessoriesRes] =
+        await Promise.all([
+             API.get("/orders/admin"),
+            API.get("/user/admin/users"),
             API.get("/petfoods/admin"),
             API.get("/accessories/admin"),
-          ]);
-        setOrders(ordersRes.data);
-        setUsers(usersRes.data);
-        setPetFoods(petFoodsRes.data);
-        setAccessories(accessoriesRes.data);
-      } catch (err) {
-        console.error(err);
-        setError("❌ Failed to load admin dashboard data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+
+        ]);
+      setOrders(ordersRes.data || []);
+      setUsers(usersRes.data || []);
+      setPetFoods(petFoodsRes.data || []);
+      setAccessories(accessoriesRes.data || []);
+      setError("");
+    } catch (err) {
+      console.error("Fetch Error:", err);
+      setError("❌ Failed to load admin dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData();
+    }
   }, [isAuthenticated]);
 
   const handleLogin = () => {
-    // Replace with real API call and validation in production
     const { username, password } = loginForm;
     if (username === "admin" && password === "admin123") {
       localStorage.setItem("isAdminAuthenticated", "true");
@@ -88,6 +92,11 @@ function Admin() {
   const handleLogout = () => {
     localStorage.removeItem("isAdminAuthenticated");
     setIsAuthenticated(false);
+    setOrders([]);
+    setUsers([]);
+    setPetFoods([]);
+    setAccessories([]);
+    setActiveKey("dashboard");
   };
 
   const updateOrderStatus = async (orderId, status) => {
@@ -180,169 +189,6 @@ function Admin() {
     },
   };
 
-  const renderDashboard = () => (
-    <>
-      <h4>📊 Admin Dashboard</h4>
-      <Row className="mb-3 text-center">
-        <Col><h6>👥 Users <Badge bg="info">{users.length}</Badge></h6></Col>
-        <Col><h6>🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge></h6></Col>
-        <Col><h6>🧸 Accessories <Badge bg="warning">{accessories.length}</Badge></h6></Col>
-        <Col><h6>📦 Orders <Badge bg="dark">{orders.length}</Badge></h6></Col>
-      </Row>
-      <Bar data={chartData} options={chartOptions} />
-    </>
-  );
-
-  const renderUsers = () => (
-    <>
-      <h4>👥 Users</h4>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Toggle</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u._id}>
-              <td>{u._id}</td>
-              <td>{u.username}</td>
-              <td>{u.email}</td>
-              <td>
-                <Badge bg={u.isAdmin ? "success" : "secondary"}>
-                  {u.isAdmin ? "Admin" : "User"}
-                </Badge>
-              </td>
-              <td>
-                <Button
-                  size="sm"
-                  variant={u.isAdmin ? "outline-danger" : "outline-primary"}
-                  onClick={() => toggleUserRole(u._id, u.isAdmin)}
-                >
-                  Make {u.isAdmin ? "User" : "Admin"}
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
-  const renderOrders = () => (
-    <>
-      <h4>📦 Orders</h4>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>User</th>
-            <th>Items</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order._id}>
-              <td>{order._id}</td>
-              <td>{order.user?.username || "N/A"}</td>
-              <td>
-                <ul>
-                  {order.items.map((item, i) => (
-                    <li key={i}>{item.name} ({item.productType})</li>
-                  ))}
-                </ul>
-              </td>
-              <td>
-                <Badge bg={
-                  order.status === "Delivered" ? "success" :
-                  order.status === "Cancelled" ? "danger" : "warning"
-                }>
-                  {order.status}
-                </Badge>
-              </td>
-              <td>
-                <Button
-                  variant="success"
-                  size="sm"
-                  className="me-2"
-                  onClick={() => updateOrderStatus(order._id, "Delivered")}
-                  disabled={order.status === "Delivered"}
-                >
-                  Delivered
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => updateOrderStatus(order._id, "Cancelled")}
-                  disabled={order.status === "Cancelled"}
-                >
-                  Cancel
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
-  const renderStockTable = (data, type) => (
-    <>
-      <h4>{type === "petfood" ? "🍖 Pet Foods" : "🧸 Accessories"}</h4>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Update Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item) => (
-            <tr key={item._id}>
-              <td>{item._id}</td>
-              <td>{item.foodName || item.accessoryName}</td>
-              <td>₹{item.price}</td>
-              <td>{item.stock || item.stockQuantity}</td>
-              <td>
-                <Form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const change = parseInt(e.target.stock.value, 10);
-                    if (isNaN(change)) return;
-                    const currentStock = item.stock || item.stockQuantity;
-                    const newStock = currentStock + change;
-                    if (newStock < 0) return;
-                    updateStock(item._id, type, newStock);
-                    e.target.reset();
-                  }}
-                  className="d-flex gap-2"
-                >
-                  <Form.Control
-                    type="number"
-                    name="stock"
-                    min={-(item.stock || item.stockQuantity)}
-                    placeholder="Adjust"
-                    required
-                  />
-                  <Button type="submit" size="sm" variant="primary">Update</Button>
-                </Form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
   const renderLoginForm = () => (
     <Container className="mt-5" style={{ maxWidth: "500px" }}>
       {error && <Alert variant="danger">{error}</Alert>}
@@ -357,7 +203,6 @@ function Admin() {
           <Form.Label>Admin Username</Form.Label>
           <Form.Control
             type="text"
-            placeholder="Enter admin username"
             value={loginForm.username}
             onChange={(e) =>
               setLoginForm({ ...loginForm, username: e.target.value })
@@ -366,10 +211,9 @@ function Admin() {
           />
         </Form.Group>
         <Form.Group className="mb-3">
-          <Form.Label>Admin Password</Form.Label>
+          <Form.Label>Password</Form.Label>
           <Form.Control
             type="password"
-            placeholder="Enter password"
             value={loginForm.password}
             onChange={(e) =>
               setLoginForm({ ...loginForm, password: e.target.value })
@@ -377,21 +221,18 @@ function Admin() {
             required
           />
         </Form.Group>
-        <Button type="submit" variant="primary">
-          Login
-        </Button>
+        <Button type="submit">Login</Button>
       </Form>
     </Container>
   );
 
-  if (!isAuthenticated) {
-    return renderLoginForm();
-  }
+  if (!isAuthenticated) return renderLoginForm();
 
   if (loading) {
     return (
       <Container className="text-center mt-5">
         <Spinner animation="border" />
+        <p>Loading admin dashboard...</p>
       </Container>
     );
   }
@@ -412,7 +253,18 @@ function Admin() {
           </Nav>
         </Col>
         <Col md={9}>
-          {activeKey === "dashboard" && renderDashboard()}
+          {activeKey === "dashboard" && (
+            <>
+              <h4>📊 Admin Dashboard</h4>
+              <Row className="mb-3 text-center">
+                <Col><h6>👥 Users <Badge bg="info">{users.length}</Badge></h6></Col>
+                <Col><h6>🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge></h6></Col>
+                <Col><h6>🧸 Accessories <Badge bg="warning">{accessories.length}</Badge></h6></Col>
+                <Col><h6>📦 Orders <Badge bg="dark">{orders.length}</Badge></h6></Col>
+              </Row>
+              <Bar data={chartData} options={chartOptions} />
+            </>
+          )}
           {activeKey === "users" && renderUsers()}
           {activeKey === "orders" && renderOrders()}
           {activeKey === "petfoods" && renderStockTable(petFoods, "petfood")}
@@ -421,6 +273,99 @@ function Admin() {
       </Row>
     </Container>
   );
+
+  function renderUsers() {
+    return (
+      <>
+        <h4>👥 Users</h4>
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr><th>ID</th><th>Username</th><th>Role</th><th>Toggle</th></tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u._id}>
+                <td>{u._id}</td>
+                <td>{u.username}</td>
+                <td><Badge bg={u.isAdmin ? "success" : "secondary"}>{u.isAdmin ? "Admin" : "User"}</Badge></td>
+                <td><Button size="sm" variant={u.isAdmin ? "outline-danger" : "outline-primary"} onClick={() => toggleUserRole(u._id, u.isAdmin)}>Make {u.isAdmin ? "User" : "Admin"}</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
+
+  function renderOrders() {
+    return (
+      <>
+        <h4>📦 Orders</h4>
+        <Table striped bordered hover responsive>
+          <thead><tr><th>ID</th><th>User</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order._id}>
+                <td>{order._id}</td>
+                <td>{order.user?.username || "N/A"}</td>
+                <td><ul>{order.items?.map((item, i) => <li key={i}>{item.name} ({item.productType})</li>)}</ul></td>
+                <td><Badge bg={order.status === "Delivered" ? "success" : order.status === "Cancelled" ? "danger" : "warning"}>{order.status}</Badge></td>
+                <td>
+                  <Button variant="success" size="sm" className="me-2" onClick={() => updateOrderStatus(order._id, "Delivered")} disabled={order.status === "Delivered"}>Delivered</Button>
+                  <Button variant="danger" size="sm" onClick={() => updateOrderStatus(order._id, "Cancelled")} disabled={order.status === "Cancelled"}>Cancel</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
+
+  function renderStockTable(data, type) {
+    return (
+      <>
+        <h4>{type === "petfood" ? "🍖 Pet Foods" : "🧸 Accessories"}</h4>
+        <Table striped bordered hover responsive>
+          <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Update</th></tr></thead>
+          <tbody>
+            {data.map((item) => (
+              <tr key={item._id}>
+                <td>{item._id}</td>
+                <td>{item.foodName || item.accessoryName}</td>
+                <td>₹{item.price}</td>
+                <td>{item.stock || item.stockQuantity}</td>
+                <td>
+                  <Form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const change = parseInt(e.target.stock.value, 10);
+                      if (isNaN(change)) return;
+                      const currentStock = item.stock || item.stockQuantity;
+                      const newStock = currentStock + change;
+                      if (newStock < 0) return;
+                      updateStock(item._id, type, newStock);
+                      e.target.reset();
+                    }}
+                    className="d-flex gap-2"
+                  >
+                    <Form.Control
+                      type="number"
+                      name="stock"
+                      min={-(item.stock || item.stockQuantity)}
+                      placeholder="Adjust"
+                      required
+                    />
+                    <Button type="submit" size="sm" variant="primary">Update</Button>
+                  </Form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
 }
 
 export default Admin;
