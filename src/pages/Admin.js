@@ -20,6 +20,7 @@ import {
   BarElement,
   LineElement,
   PointElement,
+  LineController,   // <-- Added this import
   Tooltip,
   Legend,
 } from "chart.js";
@@ -30,6 +31,7 @@ ChartJS.register(
   BarElement,
   LineElement,
   PointElement,
+  LineController,   // <-- Added this registration
   Tooltip,
   Legend
 );
@@ -44,21 +46,19 @@ function Admin() {
   const [users, setUsers] = useState([]);
   const [petFoods, setPetFoods] = useState([]);
   const [accessories, setAccessories] = useState([]);
-  const [loading, setLoading] = useState(false); // default: false
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, usersRes, petFoodsRes, accessoriesRes] =
-        await Promise.all([
-             API.get("/orders/admin"),
-            API.get("/user/admin/users"),
-            API.get("/petfoods/admin"),
-            API.get("/accessories/admin"),
-
-        ]);
+      const [ordersRes, usersRes, petFoodsRes, accessoriesRes] = await Promise.all([
+        API.get("/orders/admin"),
+        API.get("/user/admin/users"),
+        API.get("/petfoods/admin"),
+        API.get("/accessories/admin"),
+      ]);
       setOrders(ordersRes.data || []);
       setUsers(usersRes.data || []);
       setPetFoods(petFoodsRes.data || []);
@@ -235,137 +235,280 @@ function Admin() {
         <p>Loading admin dashboard...</p>
       </Container>
     );
-  }
-  else if(!loading) {
-  return (
-    <Container className="mt-4">
-      {error && <Alert variant="danger">{error}</Alert>}
-      {successMsg && <Alert variant="success">{successMsg}</Alert>}
-      <Row>
-        <Col md={3}>
-          <Nav variant="pills" className="flex-column">
-            <Nav.Item><Nav.Link active={activeKey === "dashboard"} onClick={() => setActiveKey("dashboard")}>📊 Dashboard</Nav.Link></Nav.Item>
-            <Nav.Item><Nav.Link active={activeKey === "users"} onClick={() => setActiveKey("users")}>👥 Users</Nav.Link></Nav.Item>
-            <Nav.Item><Nav.Link active={activeKey === "orders"} onClick={() => setActiveKey("orders")}>📦 Orders</Nav.Link></Nav.Item>
-            <Nav.Item><Nav.Link active={activeKey === "petfoods"} onClick={() => setActiveKey("petfoods")}>🍖 Pet Foods</Nav.Link></Nav.Item>
-            <Nav.Item><Nav.Link active={activeKey === "accessories"} onClick={() => setActiveKey("accessories")}>🧸 Accessories</Nav.Link></Nav.Item>
-            <Nav.Item><Nav.Link onClick={handleLogout}>🚪 Logout</Nav.Link></Nav.Item>
-          </Nav>
-        </Col>
-        <Col md={9}>
-          {activeKey === "dashboard" && (
-            <>
-              <h4>📊 Admin Dashboard</h4>
-              <Row className="mb-3 text-center">
-                <Col><h6>👥 Users <Badge bg="info">{users.length}</Badge></h6></Col>
-                <Col><h6>🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge></h6></Col>
-                <Col><h6>🧸 Accessories <Badge bg="warning">{accessories.length}</Badge></h6></Col>
-                <Col><h6>📦 Orders <Badge bg="dark">{orders.length}</Badge></h6></Col>
-              </Row>
-              <Bar data={chartData} options={chartOptions} />
-            </>
-          )}
-          {activeKey === "users" && renderUsers()}
-          {activeKey === "orders" && renderOrders()}
-          {activeKey === "petfoods" && renderStockTable(petFoods, "petfood")}
-          {activeKey === "accessories" && renderStockTable(accessories, "accessory")}
-        </Col>
-      </Row>
-    </Container>
-  );
-  }
-  
-
-  function renderUsers() {
+  } else if (!loading) {
     return (
-      <>
-        <h4>👥 Users</h4>
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr><th>ID</th><th>Username</th><th>Role</th><th>Toggle</th></tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u._id}>
-                <td>{u._id}</td>
-                <td>{u.username}</td>
-                <td><Badge bg={u.isAdmin ? "success" : "secondary"}>{u.isAdmin ? "Admin" : "User"}</Badge></td>
-                <td><Button size="sm" variant={u.isAdmin ? "outline-danger" : "outline-primary"} onClick={() => toggleUserRole(u._id, u.isAdmin)}>Make {u.isAdmin ? "User" : "Admin"}</Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </>
-    );
-  }
+      <Container className="mt-4">
+        {error && <Alert variant="danger">{error}</Alert>}
+        {successMsg && <Alert variant="success">{successMsg}</Alert>}
+        <Row>
+          <Col md={3}>
+            <Nav variant="pills" className="flex-column">
+              <Nav.Item>
+                <Nav.Link
+                  active={activeKey === "dashboard"}
+                  onClick={() => setActiveKey("dashboard")}
+                >
+                  📊 Dashboard
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link
+                  active={activeKey === "users"}
+                  onClick={() => setActiveKey("users")}
+                >
+                  👥 Users
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link
+                  active={activeKey === "orders"}
+                  onClick={() => setActiveKey("orders")}
+                >
+                  📦 Orders
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link
+                  active={activeKey === "petfoods"}
+                  onClick={() => setActiveKey("petfoods")}
+                >
+                  🍖 Pet Foods
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link
+                  active={activeKey === "accessories"}
+                  onClick={() => setActiveKey("accessories")}
+                >
+                  🧸 Accessories
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link onClick={handleLogout}>🚪 Logout</Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Col>
+          <Col md={9}>
+            {activeKey === "dashboard" && (
+              <>
+                <h4>📊 Admin Dashboard</h4>
+                <Row className="mb-3 text-center">
+                  <Col>
+                    <h6>
+                      👥 Users <Badge bg="info">{users.length}</Badge>
+                    </h6>
+                  </Col>
+                  <Col>
+                    <h6>
+                      🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge>
+                    </h6>
+                  </Col>
+                  <Col>
+                    <h6>
+                      🧸 Accessories{" "}
+                      <Badge bg="warning" text="dark">
+                        {accessories.length}
+                      </Badge>
+                    </h6>
+                  </Col>
+                  <Col>
+                    <h6>
+                      📦 Orders <Badge bg="primary">{orders.length}</Badge>
+                    </h6>
+                  </Col>
+                </Row>
+                <Bar data={chartData} options={chartOptions} />
+              </>
+            )}
 
-  function renderOrders() {
-    return (
-      <>
-        <h4>📦 Orders</h4>
-        <Table striped bordered hover responsive>
-          <thead><tr><th>ID</th><th>User</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order._id}>
-                <td>{order._id}</td>
-                <td>{order.user?.username || "N/A"}</td>
-                <td><ul>{order.items?.map((item, i) => <li key={i}>{item.name} ({item.productType})</li>)}</ul></td>
-                <td><Badge bg={order.status === "Delivered" ? "success" : order.status === "Cancelled" ? "danger" : "warning"}>{order.status}</Badge></td>
-                <td>
-                  <Button variant="success" size="sm" className="me-2" onClick={() => updateOrderStatus(order._id, "Delivered")} disabled={order.status === "Delivered"}>Delivered</Button>
-                  <Button variant="danger" size="sm" onClick={() => updateOrderStatus(order._id, "Cancelled")} disabled={order.status === "Cancelled"}>Cancel</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </>
-    );
-  }
+            {activeKey === "users" && (
+              <>
+                <h4>👥 Users</h4>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center">
+                          No users found.
+                        </td>
+                      </tr>
+                    )}
+                    {users.map((user) => (
+                      <tr key={user._id}>
+                        <td>{user.username}</td>
+                        <td>{user.email}</td>
+                        <td>{user.isAdmin ? "Admin" : "User"}</td>
+                        <td>
+                          <Button
+                            variant={user.isAdmin ? "danger" : "success"}
+                            onClick={() => toggleUserRole(user._id, user.isAdmin)}
+                            size="sm"
+                          >
+                            {user.isAdmin ? "Revoke Admin" : "Make Admin"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
 
-  function renderStockTable(data, type) {
-    return (
-      <>
-        <h4>{type === "petfood" ? "🍖 Pet Foods" : "🧸 Accessories"}</h4>
-        <Table striped bordered hover responsive>
-          <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Update</th></tr></thead>
-          <tbody>
-            {data.map((item) => (
-              <tr key={item._id}>
-                <td>{item._id}</td>
-                <td>{item.foodName || item.accessoryName}</td>
-                <td>₹{item.price}</td>
-                <td>{item.stock || item.stockQuantity}</td>
-                <td>
-                  <Form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const change = parseInt(e.target.stock.value, 10);
-                      if (isNaN(change)) return;
-                      const currentStock = item.stock || item.stockQuantity;
-                      const newStock = currentStock + change;
-                      if (newStock < 0) return;
-                      updateStock(item._id, type, newStock);
-                      e.target.reset();
-                    }}
-                    className="d-flex gap-2"
-                  >
-                    <Form.Control
-                      type="number"
-                      name="stock"
-                      min={-(item.stock || item.stockQuantity)}
-                      placeholder="Adjust"
-                      required
-                    />
-                    <Button type="submit" size="sm" variant="primary">Update</Button>
-                  </Form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </>
+            {activeKey === "orders" && (
+              <>
+                <h4>📦 Orders</h4>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>User</th>
+                      <th>Items</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center">
+                          No orders found.
+                        </td>
+                      </tr>
+                    )}
+                    {orders.map((order) => (
+                      <tr key={order._id}>
+                        <td>{order._id}</td>
+                        <td>{order.user?.username || "Unknown"}</td>
+                        <td>
+                          {order.items
+                            ?.map(
+                              (item) =>
+                                `${item.name} (x${item.quantity})`
+                            )
+                            .join(", ")}
+                        </td>
+                        <td>{order.status}</td>
+                        <td>
+                          {order.status !== "Delivered" && (
+                            <>
+                              <Button
+                                variant="success"
+                                size="sm"
+                                onClick={() =>
+                                  updateOrderStatus(order._id, "Delivered")
+                                }
+                              >
+                                Mark Delivered
+                              </Button>{" "}
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() =>
+                                  updateOrderStatus(order._id, "Cancelled")
+                                }
+                              >
+                                Cancel Order
+                              </Button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
+
+            {activeKey === "petfoods" && (
+              <>
+                <h4>🍖 Pet Foods</h4>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Stock Quantity</th>
+                      <th>Update Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {petFoods.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-center">
+                          No pet foods found.
+                        </td>
+                      </tr>
+                    )}
+                    {petFoods.map((food) => (
+                      <tr key={food._id}>
+                        <td>{food.name}</td>
+                        <td>{food.stock}</td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            min="0"
+                            defaultValue={food.stock}
+                            onBlur={(e) =>
+                              updateStock(food._id, "petfood", Number(e.target.value))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
+
+            {activeKey === "accessories" && (
+              <>
+                <h4>🧸 Accessories</h4>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Stock Quantity</th>
+                      <th>Update Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accessories.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-center">
+                          No accessories found.
+                        </td>
+                      </tr>
+                    )}
+                    {accessories.map((acc) => (
+                      <tr key={acc._id}>
+                        <td>{acc.name}</td>
+                        <td>{acc.stockQuantity}</td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            min="0"
+                            defaultValue={acc.stockQuantity}
+                            onBlur={(e) =>
+                              updateStock(acc._id, "accessories", Number(e.target.value))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
+          </Col>
+        </Row>
+      </Container>
     );
   }
 }
