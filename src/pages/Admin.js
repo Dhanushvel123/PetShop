@@ -44,7 +44,7 @@ function Admin() {
   const [users, setUsers] = useState([]);
   const [petFoods, setPetFoods] = useState([]);
   const [accessories, setAccessories] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // default: false
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -53,10 +53,11 @@ function Admin() {
     try {
       const [ordersRes, usersRes, petFoodsRes, accessoriesRes] =
         await Promise.all([
-          API.get("/orders/admin"),
-          API.get("/user/admin/users"),
-          API.get("/petfoods/admin"),
-          API.get("/accessories/admin"),
+             API.get("/orders/admin"),
+            API.get("/user/admin/users"),
+            API.get("/petfoods/admin"),
+            API.get("/accessories/admin"),
+
         ]);
       setOrders(ordersRes.data || []);
       setUsers(usersRes.data || []);
@@ -225,165 +226,148 @@ function Admin() {
     </Container>
   );
 
-  const renderUsers = () => (
-    <>
-      <h4>👥 Users</h4>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Username</th>
-            <th>Admin Role</th>
-            <th>Toggle Role</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user._id}>
-              <td>{user.email}</td>
-              <td>{user.username}</td>
-              <td>{user.isAdmin ? "Yes" : "No"}</td>
-              <td>
-                <Button
-                  variant="warning"
-                  onClick={() => toggleUserRole(user._id, user.isAdmin)}
-                >
-                  Toggle
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
-  const renderOrders = () => (
-    <>
-      <h4>📦 Orders</h4>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>User</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Mark Delivered</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order._id}>
-              <td>{order._id}</td>
-              <td>{order.user?.username || "N/A"}</td>
-              <td>₹{order.total}</td>
-              <td>{order.status}</td>
-              <td>
-                {order.status !== "Delivered" && (
-                  <Button
-                    variant="success"
-                    onClick={() => updateOrderStatus(order._id, "Delivered")}
-                  >
-                    Deliver
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
-  const renderStockTable = (data, type) => (
-    <>
-      <h4>{type === "petfood" ? "🍖 Pet Foods" : "🧸 Accessories"}</h4>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Stock</th>
-            <th>Update</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item) => (
-            <tr key={item._id}>
-              <td>{item.name}</td>
-              <td>{type === "petfood" ? item.stock : item.stockQuantity}</td>
-              <td>
-                <Form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const stock = e.target.elements.stock.value;
-                    updateStock(item._id, type, stock);
-                  }}
-                >
-                  <Form.Control
-                    type="number"
-                    name="stock"
-                    defaultValue={
-                      type === "petfood" ? item.stock : item.stockQuantity
-                    }
-                    style={{ width: "100px", display: "inline-block", marginRight: "5px" }}
-                  />
-                  <Button type="submit" size="sm">Update</Button>
-                </Form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-
   if (!isAuthenticated) return renderLoginForm();
 
+  if (loading) {
+    return (
+      <Container className="text-center mt-5">
+        <Spinner animation="border" />
+        <p>Loading admin dashboard...</p>
+      </Container>
+    );
+  }
+  else if(!loading) {
   return (
     <Container className="mt-4">
-      {loading ? (
-        <div className="text-center">
-          <Spinner animation="border" />
-          <p>Loading admin dashboard...</p>
-        </div>
-      ) : (
-        <>
-          {error && <Alert variant="danger">{error}</Alert>}
-          {successMsg && <Alert variant="success">{successMsg}</Alert>}
-          <Row>
-            <Col md={3}>
-              <Nav variant="pills" className="flex-column">
-                <Nav.Item><Nav.Link active={activeKey === "dashboard"} onClick={() => setActiveKey("dashboard")}>📊 Dashboard</Nav.Link></Nav.Item>
-                <Nav.Item><Nav.Link active={activeKey === "users"} onClick={() => setActiveKey("users")}>👥 Users</Nav.Link></Nav.Item>
-                <Nav.Item><Nav.Link active={activeKey === "orders"} onClick={() => setActiveKey("orders")}>📦 Orders</Nav.Link></Nav.Item>
-                <Nav.Item><Nav.Link active={activeKey === "petfoods"} onClick={() => setActiveKey("petfoods")}>🍖 Pet Foods</Nav.Link></Nav.Item>
-                <Nav.Item><Nav.Link active={activeKey === "accessories"} onClick={() => setActiveKey("accessories")}>🧸 Accessories</Nav.Link></Nav.Item>
-                <Nav.Item><Nav.Link onClick={handleLogout}>🚪 Logout</Nav.Link></Nav.Item>
-              </Nav>
-            </Col>
-            <Col md={9}>
-              {activeKey === "dashboard" && (
-                <>
-                  <h4>📊 Admin Dashboard</h4>
-                  <Row className="mb-3 text-center">
-                    <Col><h6>👥 Users <Badge bg="info">{users.length}</Badge></h6></Col>
-                    <Col><h6>🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge></h6></Col>
-                    <Col><h6>🧸 Accessories <Badge bg="warning">{accessories.length}</Badge></h6></Col>
-                    <Col><h6>📦 Orders <Badge bg="dark">{orders.length}</Badge></h6></Col>
-                  </Row>
-                  <Bar data={chartData} options={chartOptions} />
-                </>
-              )}
-              {activeKey === "users" && renderUsers()}
-              {activeKey === "orders" && renderOrders()}
-              {activeKey === "petfoods" && renderStockTable(petFoods, "petfood")}
-              {activeKey === "accessories" && renderStockTable(accessories, "accessory")}
-            </Col>
-          </Row>
-        </>
-      )}
+      {error && <Alert variant="danger">{error}</Alert>}
+      {successMsg && <Alert variant="success">{successMsg}</Alert>}
+      <Row>
+        <Col md={3}>
+          <Nav variant="pills" className="flex-column">
+            <Nav.Item><Nav.Link active={activeKey === "dashboard"} onClick={() => setActiveKey("dashboard")}>📊 Dashboard</Nav.Link></Nav.Item>
+            <Nav.Item><Nav.Link active={activeKey === "users"} onClick={() => setActiveKey("users")}>👥 Users</Nav.Link></Nav.Item>
+            <Nav.Item><Nav.Link active={activeKey === "orders"} onClick={() => setActiveKey("orders")}>📦 Orders</Nav.Link></Nav.Item>
+            <Nav.Item><Nav.Link active={activeKey === "petfoods"} onClick={() => setActiveKey("petfoods")}>🍖 Pet Foods</Nav.Link></Nav.Item>
+            <Nav.Item><Nav.Link active={activeKey === "accessories"} onClick={() => setActiveKey("accessories")}>🧸 Accessories</Nav.Link></Nav.Item>
+            <Nav.Item><Nav.Link onClick={handleLogout}>🚪 Logout</Nav.Link></Nav.Item>
+          </Nav>
+        </Col>
+        <Col md={9}>
+          {activeKey === "dashboard" && (
+            <>
+              <h4>📊 Admin Dashboard</h4>
+              <Row className="mb-3 text-center">
+                <Col><h6>👥 Users <Badge bg="info">{users.length}</Badge></h6></Col>
+                <Col><h6>🍖 Pet Foods <Badge bg="success">{petFoods.length}</Badge></h6></Col>
+                <Col><h6>🧸 Accessories <Badge bg="warning">{accessories.length}</Badge></h6></Col>
+                <Col><h6>📦 Orders <Badge bg="dark">{orders.length}</Badge></h6></Col>
+              </Row>
+              <Bar data={chartData} options={chartOptions} />
+            </>
+          )}
+          {activeKey === "users" && renderUsers()}
+          {activeKey === "orders" && renderOrders()}
+          {activeKey === "petfoods" && renderStockTable(petFoods, "petfood")}
+          {activeKey === "accessories" && renderStockTable(accessories, "accessory")}
+        </Col>
+      </Row>
     </Container>
   );
+  }
+  
+
+  function renderUsers() {
+    return (
+      <>
+        <h4>👥 Users</h4>
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr><th>ID</th><th>Username</th><th>Role</th><th>Toggle</th></tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u._id}>
+                <td>{u._id}</td>
+                <td>{u.username}</td>
+                <td><Badge bg={u.isAdmin ? "success" : "secondary"}>{u.isAdmin ? "Admin" : "User"}</Badge></td>
+                <td><Button size="sm" variant={u.isAdmin ? "outline-danger" : "outline-primary"} onClick={() => toggleUserRole(u._id, u.isAdmin)}>Make {u.isAdmin ? "User" : "Admin"}</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
+
+  function renderOrders() {
+    return (
+      <>
+        <h4>📦 Orders</h4>
+        <Table striped bordered hover responsive>
+          <thead><tr><th>ID</th><th>User</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order._id}>
+                <td>{order._id}</td>
+                <td>{order.user?.username || "N/A"}</td>
+                <td><ul>{order.items?.map((item, i) => <li key={i}>{item.name} ({item.productType})</li>)}</ul></td>
+                <td><Badge bg={order.status === "Delivered" ? "success" : order.status === "Cancelled" ? "danger" : "warning"}>{order.status}</Badge></td>
+                <td>
+                  <Button variant="success" size="sm" className="me-2" onClick={() => updateOrderStatus(order._id, "Delivered")} disabled={order.status === "Delivered"}>Delivered</Button>
+                  <Button variant="danger" size="sm" onClick={() => updateOrderStatus(order._id, "Cancelled")} disabled={order.status === "Cancelled"}>Cancel</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
+
+  function renderStockTable(data, type) {
+    return (
+      <>
+        <h4>{type === "petfood" ? "🍖 Pet Foods" : "🧸 Accessories"}</h4>
+        <Table striped bordered hover responsive>
+          <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Update</th></tr></thead>
+          <tbody>
+            {data.map((item) => (
+              <tr key={item._id}>
+                <td>{item._id}</td>
+                <td>{item.foodName || item.accessoryName}</td>
+                <td>₹{item.price}</td>
+                <td>{item.stock || item.stockQuantity}</td>
+                <td>
+                  <Form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const change = parseInt(e.target.stock.value, 10);
+                      if (isNaN(change)) return;
+                      const currentStock = item.stock || item.stockQuantity;
+                      const newStock = currentStock + change;
+                      if (newStock < 0) return;
+                      updateStock(item._id, type, newStock);
+                      e.target.reset();
+                    }}
+                    className="d-flex gap-2"
+                  >
+                    <Form.Control
+                      type="number"
+                      name="stock"
+                      min={-(item.stock || item.stockQuantity)}
+                      placeholder="Adjust"
+                      required
+                    />
+                    <Button type="submit" size="sm" variant="primary">Update</Button>
+                  </Form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
+    );
+  }
 }
 
 export default Admin;
