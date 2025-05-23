@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { HashRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { Navbar, Nav, NavDropdown, Container, Button } from 'react-bootstrap';
 import { FaUserCircle } from 'react-icons/fa';
-import { jwtDecode } from 'jwt-decode'; // <-- Named import
+import { jwtDecode } from 'jwt-decode';
 
 import SignIn from './pages/SignIn';
 import Home from './pages/Home';
@@ -20,7 +19,7 @@ import Admin from './pages/Admin';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [username, setUsername] = useState('');
   const navigate = useNavigate();
@@ -62,11 +61,11 @@ function App() {
     localStorage.removeItem('token');
     setToken(null);
     setUsername('');
-     navigate('/signin');
+    navigate('/signin');
   };
 
   return (
-    <Router>
+    <>
       <Navbar bg="success" expand="lg" variant="dark" sticky="top" className="shadow-sm">
         <Container>
           <Navbar.Brand as={Link} to={token ? "/home" : "/signin"} className="fw-bold">
@@ -86,15 +85,11 @@ function App() {
                 <Nav.Link as={Link} to="/contact">Contact</Nav.Link>
                 <Nav.Link as={Link} to="/testimonial">Testimonials</Nav.Link>
                 <Nav.Link as={Link} to="/orders">Order History</Nav.Link>
-
-                {/* Admin Dashboard link visible to all logged-in users */}
                 <Nav.Link as={Link} to="/admin">Admin Dashboard</Nav.Link>
-
                 <Link to="/profile" className="d-flex align-items-center text-white fw-bold text-decoration-none ms-3">
                   <FaUserCircle size={22} className="me-2" />
                   {username}
                 </Link>
-
                 <Button
                   variant="outline-light"
                   className="ms-3 mt-2 mt-lg-0"
@@ -124,14 +119,18 @@ function App() {
           <Route path="/testimonial" element={token ? <Testimonial /> : <Navigate to="/signin" />} />
           <Route path="/profile" element={token ? <UserProfile /> : <Navigate to="/signin" />} />
           <Route path="/orders" element={token ? <OrderHistory /> : <Navigate to="/signin" />} />
-
-          {/* Admin page accessible to all logged-in users */}
           <Route path="/admin" element={token ? <Admin /> : <Navigate to="/signin" />} />
-
-          {/* Catch-all */}
           <Route path="*" element={<Navigate to={token ? "/home" : "/signin"} />} />
         </Routes>
       </main>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
