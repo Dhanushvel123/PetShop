@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/PetShop/static/css/main.94f89e0a.css",
-    "main.js": "/PetShop/static/js/main.96f49468.js",
+    "main.js": "/PetShop/static/js/main.1c61acc9.js",
     "static/media/hero.jpg": "/PetShop/static/media/hero.fc03bca76a7fd958ad98.jpg",
     "static/media/offer.jpg": "/PetShop/static/media/offer.3eb084514d816a00c61d.jpg",
     "static/media/testimonial.jpg": "/PetShop/static/media/testimonial.4fb3097ed16e03a795ec.jpg",
@@ -18,10 +18,10 @@
     "static/media/blog-2.jpg": "/PetShop/static/media/blog-2.5258f20ecfc2aa12f885.jpg",
     "index.html": "/PetShop/index.html",
     "main.94f89e0a.css.map": "/PetShop/static/css/main.94f89e0a.css.map",
-    "main.96f49468.js.map": "/PetShop/static/js/main.96f49468.js.map"
+    "main.1c61acc9.js.map": "/PetShop/static/js/main.1c61acc9.js.map"
   },
   "entrypoints": [
     "static/css/main.94f89e0a.css",
-    "static/js/main.96f49468.js"
+    "static/js/main.1c61acc9.js"
   ]
 }
